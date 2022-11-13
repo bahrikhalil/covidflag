@@ -1,0 +1,8 @@
+{
+  "properties": [
+    {
+      "name": "ratingurl",
+      "type": "java.lang.String",
+      "description": "Description for ratingurl."
+  }
+] }
