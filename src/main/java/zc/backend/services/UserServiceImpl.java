@@ -1,0 +1,92 @@
+package zc.backend.services;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import zc.backend.modles.Role;
+import zc.backend.modles.Users;
+import zc.backend.repository.RoleRepo;
+import zc.backend.repository.UserRepo;
+import javax.transaction.Transactional;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Function;
+
+
+@Service
+@Transactional
+@Slf4j
+@CrossOrigin("*")
+public class UserServiceImpl implements UserService, UserDetailsService {
+
+    private final UserRepo userRepo;
+    private  final RoleRepo  roleRepo ;
+    private final PasswordEncoder passwordEncoder;
+
+   @Autowired
+   public  UserServiceImpl(UserRepo userRepo,RoleRepo roleRepo,PasswordEncoder passwordEncoder){
+       this.userRepo=userRepo ;
+       this.roleRepo=roleRepo;
+       this.passwordEncoder=passwordEncoder ;
+   }
+
+
+    @Override
+    public Users saveUser(Users users) {
+       log.info("saving new user {}",users.getName() );
+        users.setPassword(passwordEncoder.encode(users.getPassword()));
+        return userRepo.save(users);
+    }
+
+
+    @Override
+    public Role saveRole(Role role) {
+       log.info("saving new Role {}", role.getRoleName());
+       return roleRepo.save(role);
+    }
+
+
+    @Override
+    public void addRoleToUser(String username, String roleName) {
+     Users users =userRepo.findByUsername(username);
+     Role role=roleRepo.findByRoleName(roleName);
+     log.info("adding  role {} to User {}",role.getRoleName(),users.getName());
+     users.setRole(role);
+
+    }
+
+    @Override
+    public Users getUser(String username) {
+        return userRepo.findByUsername(username);
+    }
+
+    @Override
+    public List<Users> getUsers() {
+        return userRepo.findAll();
+    }
+
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        Users users=userRepo.findByUsername(username) ;
+        if (users==null)
+        {
+            log.error("no user  in  db");
+            throw new UsernameNotFoundException("no user  in  db");
+        }
+        else {
+            log.info("user  is found  : {}", username);
+        }
+        Collection<SimpleGrantedAuthority> authorities =new ArrayList<SimpleGrantedAuthority>();
+        authorities.add( new  SimpleGrantedAuthority (users.getRole().getRoleName()));
+        return new org.springframework.security.core.userdetails.User(users.getUsername(),users.getPassword(),authorities);
+    }
+}
